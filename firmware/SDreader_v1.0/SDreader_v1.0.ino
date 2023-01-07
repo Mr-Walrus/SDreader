@@ -26,7 +26,8 @@
 #include "buttonMinim.h"
 #include <SPI.h>
 #include <SD_fix.h>
-#include <GyverOLED.h>
+#include "GyverOLED_fix.h"
+#include "Vector.h"
 
 // данные и классы
 buttonMinim buttUP(BTN_UP);
@@ -37,6 +38,7 @@ Sd2Card card;
 SdVolume volume;
 SdFile root;
 File myFile;
+Vector<int> Pss;
 
 // переменные
 String filenames = "";
@@ -59,6 +61,11 @@ void setup() {
   oledInit();
   SDinit();
   printNames();
+  
+  Pss.reserve(10);
+ // for(int i = 0; i < 30; i++)
+ //   Poses[i] = 0;
+ 
   /*
     // 8 МГц искусственно
     CLKPR |= (1 << CLKPCE); // разрешить изменение прескалера
@@ -100,6 +107,8 @@ void loop() {
     if (mode == 0) {
       mode = 1;
       myFile = SD.open(setName, FILE_READ);
+      Pss.empty();
+      //curPage = 0;
       oled.inverse(false);
       printFile();
     }
@@ -126,20 +135,31 @@ void nextPage() {
   printFile();
 }
 void prevPage() {
-  long pos = myFile.position() - 500;
+  uint32_t pos = 0;
+  if (Pss.size() > 2) 
+    pos = (myFile.position() - (Pss[Pss.size()-2]+Pss[Pss.size()-1]));
   if (pos < 0) pos = 0;
+  if (Pss.size() > 1) Pss.pop_back();
+  if (Pss.size() > 0) Pss.pop_back();
   myFile.seek(pos);
   printFile();
 }
 
 // ================ ПЕЧАТЬ ФАЙЛА ================
 void printFile() {
+  if ((byte)myFile.peek() == 255) return;
   oled.clear();
   oled.home();
+  int len = 0;
   while (!oled.isEnd()) {
-    if ((byte)myFile.peek() != 255) oled.print((char)myFile.read());
+    if ((byte)myFile.peek() != 255) { 
+      oled.print((char)myFile.read());
+      len++;
+    }
     else break;
   }
+  //curPage++; 
+  Pss.push_back(len);
 }
 
 // ================ ВЫВОД ИМЁН ================
@@ -180,7 +200,8 @@ void oledInit() {
   oled.scale2X();
   oled.println("SD Reader");
   oled.scale1X();
-  oled.println("v1.0 by AlexGyver");
+  oled.println("v1.3 by AlexGyver");
+  oled.println("feat MrWalrus");
   oled.println();
 }
 
